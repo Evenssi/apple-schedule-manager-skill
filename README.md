@@ -7,8 +7,8 @@ An AI-powered schedule management skill that extracts events from natural langua
 ## Features
 
 - **Natural language parsing** — understands inputs like *"meeting with John tomorrow at 3pm for an hour"*
-- **Apple Calendar integration** — create, query, and manage calendar events
-- **Reminders integration** — create to-do items in Apple Reminders
+- **Apple Calendar integration** — create, query, update, delete, and batch-write calendar events
+- **Reminders integration** — create, read, complete, and delete reminders
 - **Conflict detection** — checks existing events before writing, suggests alternative time slots
 - **Smart scheduling** — finds free slots and recommends optimal times
 - **Recurring events** — supports daily / weekly / monthly / yearly recurrence
@@ -16,13 +16,19 @@ An AI-powered schedule management skill that extracts events from natural langua
 ## Project Structure
 
 ```
-├── SKILL.md                  # Skill definition (triggers, workflows, prompts)
+├── SKILL.md                      # Skill definition (triggers, workflows, prompts)
 └── scripts/
-    ├── calendar_read.sh      # Query events by date range
-    ├── calendar_write.sh     # Create calendar events
-    ├── calendar_find_free.sh # Find free time slots
-    ├── calendar_list.sh      # List available calendars
-    └── reminder_write.sh     # Create reminders
+    ├── calendar_read.sh          # Query events by date range
+    ├── calendar_write.sh         # Create a calendar event
+    ├── calendar_write_batch.sh   # Batch-write events from JSON
+    ├── calendar_update.sh        # Update an existing event
+    ├── calendar_delete.sh        # Delete a calendar event
+    ├── calendar_find_free.sh     # Find free time slots
+    ├── calendar_list.sh          # List available calendars
+    ├── reminder_write.sh         # Create a reminder
+    ├── reminder_read.sh          # Read reminders list
+    ├── reminder_complete.sh      # Mark a reminder as completed
+    └── reminder_delete.sh        # Delete a reminder
 ```
 
 ## Installation
@@ -53,8 +59,27 @@ chmod +x scripts/*.sh
 ./scripts/calendar_write.sh "Team Meeting" "2026-03-28T14:00:00" "2026-03-28T15:00:00" \
   "Room A" "Weekly sync" "false" "15" "weekly" "Work"
 
+# Batch-write events from a JSON file
+./scripts/calendar_write_batch.sh "/path/to/events.json"
+
+# Update an existing event
+./scripts/calendar_update.sh "Team Meeting" "2026-03-28T14:00:00" \
+  "Team Standup" "2026-03-28T10:00:00" "2026-03-28T10:30:00" "" "" "Work"
+
+# Delete a calendar event
+./scripts/calendar_delete.sh "Team Meeting" "2026-03-28T14:00:00"
+
 # Create a reminder
 ./scripts/reminder_write.sh "Buy groceries" "2026-03-28T18:00:00" "For dinner" "0" ""
+
+# Read reminders
+./scripts/reminder_read.sh "Reminders" "false"
+
+# Mark a reminder as completed
+./scripts/reminder_complete.sh "Buy groceries"
+
+# Delete a reminder
+./scripts/reminder_delete.sh "Buy groceries"
 ```
 
 ### As an AI Skill
