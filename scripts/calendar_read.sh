@@ -1,10 +1,13 @@
 #!/bin/bash
 # calendar_read.sh - 读取指定时间范围内的日历事件
-# 用法: calendar_read.sh <start_date> <end_date> [calendar_name]
-# 日期格式: YYYY-MM-DD 或 YYYY-MM-DDTHH:MM:SS
-# 输出: 每行一个事件，格式为 TITLE|START|END|LOCATION|NOTES
 
 set -euo pipefail
+
+# 系统检测
+if [[ "$OSTYPE" != "darwin"* ]]; then
+    echo "ERR|此功能仅支持 macOS 系统，当前系统不支持"
+    exit 1
+fi
 
 START_DATE="${1:?用法: calendar_read.sh <start_date> <end_date> [calendar_name]}"
 END_DATE="${2:?用法: calendar_read.sh <start_date> <end_date> [calendar_name]}"

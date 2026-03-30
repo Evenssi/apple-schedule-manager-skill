@@ -1,28 +1,30 @@
 #!/bin/bash
 # calendar_list.sh - 列出所有可用的日历
-# 用法: calendar_list.sh
-# 输出: 每行一个日历，格式为 NAME|COLOR|WRITABLE
 
 set -euo pipefail
 
+# 系统检测
+if [[ "$OSTYPE" != "darwin"* ]]; then
+    echo "ERR|此功能仅支持 macOS 系统，当前系统不支持"
+    exit 1
+fi
+
 read -r -d '' APPLESCRIPT <<'APPLESCRIPT_EOF' || true
 on run
-    set output to "📒 可用日历列表:" & linefeed
-    set output to output & "━━━━━━━━━━━━━━━━━━" & linefeed
+    set output to ""
 
     tell application "Calendar"
         repeat with cal in (every calendar)
             set calName to name of cal
             set calWritable to writable of cal
-            set calColor to color of cal
 
             if calWritable then
-                set wStr to "可写入"
+                set wStr to "true"
             else
-                set wStr to "只读"
+                set wStr to "false"
             end if
 
-            set output to output & "  📅 " & calName & " (" & wStr & ")" & linefeed
+            set output to output & calName & "|" & wStr & linefeed
         end repeat
     end tell
 

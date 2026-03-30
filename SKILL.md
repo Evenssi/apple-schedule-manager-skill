@@ -1,20 +1,55 @@
 ---
 name: apple-schedule-manager-skill
 description: >
-  个人日程管理助手，帮助管理日常生活与工作中的日程安排。
-  从自然语言输入中提取日程信息，写入 macOS 系统日历或提醒事项。
-  适用于：工作会议、朋友聚会、家庭活动、个人约会、生日提醒、医疗预约、生活待办等场景。
-  触发条件：当用户提到日程、会议、约会、提醒、安排行程、查看日历、时间冲突、空闲时间等关键词时触发。
-  核心能力：(1) 自然语言解析日程信息 (2) 读写苹果日历/提醒事项 (3) 冲突检测与替代建议
-  (4) 智能排程推荐最优时间 (5) 支持相对时间解析（如"明天下午3点"、"下周六"）。
-  注：基于 macOS 原生日历应用。
+  【仅限 macOS】将用户的自然语言日程指令解析并写入 macOS 原生日历或提醒事项。
+  触发条件：
+  - 用户明确说出「写入日历」「添加日程」「创建提醒」等操作词时触发
+  - 用户用自然语言描述时间+事件（如"明天上午十点开会一小时"），且意图是创建日程时触发
+  - 用户要求查看/修改/删除日历事件、查找空闲时间时触发
+  闲聊中单纯提及时间或会议（无操作意图）不触发。
+  不支持 Windows、Linux；不支持 Google Calendar、Outlook 等第三方日历；未接入企业办公平台。
+keywords:
+  - 写入日历
+  - 添加日程
+  - 创建提醒
+  - 查看日历
+  - 删除日程
+  - 修改日程
+  - 安排行程
+  - 查找空闲时间
+  - 提醒事项
+  - 苹果日历
+examples:
+  - "帮我把明天下午3点的团队周会写入日历"
+  - "明天上午十点开会一小时，下午三点去40楼取杂志"
+  - "查看我这周的日历安排"
+  - "把周五的晚餐约会改到周六"
+  - "删除明天上午的面试日程"
+  - "帮我找一下这周三有没有空闲时间"
+  - "添加一个提醒：周五前提交报告"
+  - "帮我安排一个1小时的健身时间"
+  - "后天下午两点牙科复诊"
+  - "提醒我周五前交报告"
 ---
 
-# Apple Schedule Manager Skill - 个人日程管理助手
+# Apple Schedule Manager Skill
+
+## 系统要求
+
+- **仅支持 macOS**，依赖 `osascript` 调用 AppleScript 操作系统日历和提醒事项应用
+- 不支持 Windows、Linux 等其他操作系统
+- 不支持 Google Calendar、Outlook、飞书、企业微信、钉钉等第三方日历/办公平台
+
+## 不触发条件
+
+以下场景 **不应** 激活本 skill：
+- 用户只是闲聊中提到时间、会议、日程等词汇，没有操作日历的意图
+- 用户要求操作非 macOS 日历（如 Google Calendar、Outlook）
+- 用户在非 macOS 系统上运行
 
 ## 基础路径
 
-本 Skill 的脚本位于此文件同级的 `scripts/` 目录下。使用时通过以下方式获取路径：
+本 Skill 的脚本位于此文件同级的 `scripts/` 目录下：
 
 ```
 SKILL_DIR = <this SKILL.md's parent directory>
@@ -22,6 +57,10 @@ SCRIPTS_DIR = SKILL_DIR/scripts
 ```
 
 ## 工作流程
+
+### 0. 前置检查
+
+执行任何脚本前，先确认用户系统为 macOS（脚本内已有 `$OSTYPE` 检测，非 darwin 会返回 `ERR|此功能仅支持 macOS 系统，当前系统不支持`）。收到此错误时，直接告知用户本功能仅支持 macOS，不再执行后续步骤。
 
 ### 1. 日程提取
 
@@ -62,26 +101,11 @@ SCRIPTS_DIR = SKILL_DIR/scripts
 **直接写入**，不需要用户确认。写入完成后，以结构化卡片格式展示已写入的日程：
 
 ```
-✅ 已写入 4 条日程
-━━━━━━━━━━━━━━━━━━
-📌 团队周会
-🕐 2026-03-31 周二 10:00 - 11:00
-📍 会议室 A
-⏰ 提前 15 分钟提醒
-━━━━━━━━━━━━━━━━━━
+✅ 已写入 1 条日程
 📌 朋友聚餐
 🕐 2026-03-31 周二 18:30 - 20:30
 📍 海底捞（朝阳店）
 ⏰ 提前 30 分钟提醒
-━━━━━━━━━━━━━━━━━━
-📌 观看线上直播
-🕐 2026-03-31 周二 10:00 - 11:00
-📍 线上
-⏰ 提前 15 分钟提醒
-━━━━━━━━━━━━━━━━━━
-📌 领取杂志
-🕐 2026-03-31 周二 15:00 - 15:30
-⏰ 提前 15 分钟提醒
 ━━━━━━━━━━━━━━━━━━
 ```
 
@@ -115,9 +139,26 @@ SCRIPTS_DIR = SKILL_DIR/scripts
 根据事件类型选择目标应用：
 
 - **有明确时间段的日程** → 写入苹果日历：运行 `scripts/calendar_write.sh`
+- **多条日程批量写入** → 运行 `scripts/calendar_write_batch.sh`，传入 JSON 文件路径
 - **待办/提醒类（无明确时段）** → 写入提醒事项：运行 `scripts/reminder_write.sh`
 
-### 6. 回退策略
+### 6. 编辑与删除
+
+#### 日历事件
+
+当用户要求修改或取消已有日程时：
+
+1. 运行 `scripts/calendar_read.sh` 查询匹配事件，获取精确的 title 和 start_date
+2. **修改**：运行 `scripts/calendar_update.sh`，传入定位字段（title + start_date）和需更新的字段（空字段不修改）
+3. **删除**：运行 `scripts/calendar_delete.sh`，传入 title + start_date
+
+#### 提醒事项
+
+- **查看**：运行 `scripts/reminder_read.sh` 读取提醒列表
+- **完成**：运行 `scripts/reminder_complete.sh` 标记为已完成
+- **删除**：运行 `scripts/reminder_delete.sh`
+
+### 7. 回退策略
 
 如果 AppleScript 执行失败（权限不足、应用不可用等）：
 
@@ -127,12 +168,18 @@ SCRIPTS_DIR = SKILL_DIR/scripts
 
 ## 脚本清单
 
-| 脚本 | 用途 | 参数 |
-|------|------|------|
-| `scripts/calendar_read.sh` | 读取指定时间范围内的日历事件 | start_date, end_date, calendar_name(可选) |
-| `scripts/calendar_write.sh` | 写入新日历事件 | title, start_date, end_date, location, notes, all_day, reminder, recurrence, calendar_name |
-| `scripts/calendar_find_free.sh` | 查找空闲时段 | date, duration_minutes, work_hours_only |
-| `scripts/reminder_write.sh` | 写入提醒事项 | title, due_date, notes, priority, list_name |
-| `scripts/calendar_list.sh` | 列出所有可用日历 | 无 |
+| 脚本 | 用途 | 参数 | 输出格式 |
+|------|------|------|----------|
+| `scripts/calendar_read.sh` | 读取指定时间范围内的日历事件 | start_date, end_date, calendar_name(可选) | `TITLE\|START\|END\|LOCATION\|NOTES\|CALENDAR\|ALL_DAY` |
+| `scripts/calendar_write.sh` | 写入新日历事件 | title, start_date, end_date, location, notes, all_day, reminder, recurrence, calendar_name | 文本消息 |
+| `scripts/calendar_write_batch.sh` | 批量写入日历事件 | json_file（JSON 数组文件路径） | 每行 `OK\|title` 或 `ERR\|title\|reason` |
+| `scripts/calendar_update.sh` | 修改已有日历事件 | search_title, search_start_date, new_title, new_start_date, new_end_date, new_location, new_notes, calendar_name | `OK\|msg` 或 `ERR\|msg` |
+| `scripts/calendar_delete.sh` | 删除日历事件 | title, start_date, calendar_name(可选) | `OK\|msg` 或 `ERR\|msg` |
+| `scripts/calendar_find_free.sh` | 查找空闲时段 | date, duration_minutes, work_hours_only | `BUSY\|HH:MM\|HH:MM\|name` / `FREE\|HH:MM\|HH:MM\|minutes` / `NONE` |
+| `scripts/calendar_list.sh` | 列出所有可用日历 | 无 | `NAME\|WRITABLE` |
+| `scripts/reminder_write.sh` | 写入提醒事项 | title, due_date, notes, priority, list_name | 文本消息 |
+| `scripts/reminder_read.sh` | 读取提醒事项列表 | list_name(可选), show_completed(可选) | `NAME\|DUE_DATE\|PRIORITY\|COMPLETED\|LIST_NAME\|NOTES` |
+| `scripts/reminder_complete.sh` | 标记提醒为已完成 | title, list_name(可选) | `OK\|msg` 或 `ERR\|msg` |
+| `scripts/reminder_delete.sh` | 删除提醒事项 | title, list_name(可选) | `OK\|msg` 或 `ERR\|msg` |
 
 所有脚本均通过 `osascript` 调用 AppleScript，适用于 macOS。

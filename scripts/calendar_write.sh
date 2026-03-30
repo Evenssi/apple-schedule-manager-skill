@@ -1,10 +1,13 @@
 #!/bin/bash
 # calendar_write.sh - 写入新日历事件
-# 用法: calendar_write.sh <title> <start_date> <end_date> [location] [notes] [all_day] [reminder_minutes] [recurrence] [calendar_name]
-# 日期格式: YYYY-MM-DDTHH:MM:SS
-# recurrence 格式: daily|weekly|monthly|yearly[:interval]  例如 weekly:1
 
 set -euo pipefail
+
+# 系统检测
+if [[ "$OSTYPE" != "darwin"* ]]; then
+    echo "ERR|此功能仅支持 macOS 系统，当前系统不支持"
+    exit 1
+fi
 
 TITLE="${1:?用法: calendar_write.sh <title> <start_date> <end_date> ...}"
 START_DATE="${2:?缺少 start_date}"
@@ -35,14 +38,17 @@ on run argv
     tell application "Calendar"
         -- 选择目标日历
         if calName is "" then
-            set targetCal to first calendar whose name is (name of first calendar)
-            -- 使用默认日历
-            try
-                set targetCal to first calendar whose name is "日历"
-            end try
-            try
-                set targetCal to first calendar whose name is "Calendar"
-            end try
+            -- 查找第一个可写日历，避免选到只读的订阅日历
+            set targetCal to missing value
+            repeat with aCal in calendars
+                if writable of aCal then
+                    set targetCal to aCal
+                    exit repeat
+                end if
+            end repeat
+            if targetCal is missing value then
+                error "未找到可写日历，请检查日历应用是否有可用的本地日历。"
+            end if
         else
             set targetCal to calendar calName
         end if

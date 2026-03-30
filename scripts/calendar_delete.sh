@@ -1,5 +1,5 @@
 #!/bin/bash
-# reminder_write.sh - 写入提醒事项
+# calendar_delete.sh - 删除日历事件
 
 set -euo pipefail
 
@@ -9,54 +9,35 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
     exit 1
 fi
 
-TITLE="${1:?用法: reminder_write.sh <title> [due_date] [notes] [priority] [list_name]}"
-DUE_DATE="${2:-}"
-NOTES="${3:-}"
-PRIORITY="${4:-0}"
-LIST_NAME="${5:-}"
+TITLE="${1:?用法: calendar_delete.sh <title> <start_date> [calendar_name]}"
+START_DATE="${2:?缺少 start_date}"
+CALENDAR_NAME="${3:-}"
 
 read -r -d '' APPLESCRIPT <<'APPLESCRIPT_EOF' || true
 on run argv
-    set reminderTitle to item 1 of argv
-    set dueDateStr to item 2 of argv
-    set reminderNotes to item 3 of argv
-    set reminderPriority to item 4 of argv as integer
-    set listName to item 5 of argv
+    set searchTitle to item 1 of argv
+    set searchStartStr to item 2 of argv
+    set calName to item 3 of argv
 
-    tell application "Reminders"
-        -- 选择目标列表
-        if listName is "" then
-            set targetList to default list
+    set searchStart to my parseDate(searchStartStr)
+
+    tell application "Calendar"
+        if calName is "" then
+            set targetCalendars to every calendar
         else
-            try
-                set targetList to list listName
-            on error
-                -- 列表不存在则创建
-                set targetList to make new list with properties {name:listName}
-            end try
+            set targetCalendars to {calendar calName}
         end if
 
-        -- 创建提醒事项
-        set props to {name:reminderTitle}
+        repeat with cal in targetCalendars
+            set matchingEvents to (every event of cal whose summary is searchTitle and start date is searchStart)
+            if (count of matchingEvents) > 0 then
+                set evtTitle to summary of item 1 of matchingEvents
+                delete item 1 of matchingEvents
+                return "OK|日程已删除: " & evtTitle
+            end if
+        end repeat
 
-        if reminderNotes is not "" then
-            set props to props & {body:reminderNotes}
-        end if
-
-        if reminderPriority > 0 then
-            set props to props & {priority:reminderPriority}
-        end if
-
-        set newReminder to make new reminder at end of reminders of targetList with properties props
-
-        -- 设置截止日期
-        if dueDateStr is not "" then
-            set dueDate to my parseDate(dueDateStr)
-            set due date of newReminder to dueDate
-            set remind me date of newReminder to dueDate
-        end if
-
-        return "✅ 提醒已创建: " & reminderTitle
+        return "ERR|未找到匹配事件: " & searchTitle & " @ " & searchStartStr
     end tell
 end run
 
@@ -82,7 +63,7 @@ on parseDate(dateStr)
         set y to text item 1 of dateStr as integer
         set m to text item 2 of dateStr as integer
         set d to text item 3 of dateStr as integer
-        set h to 9
+        set h to 0
         set min to 0
         set s to 0
     end if
@@ -100,4 +81,4 @@ on parseDate(dateStr)
 end parseDate
 APPLESCRIPT_EOF
 
-osascript -e "$APPLESCRIPT" "$TITLE" "$DUE_DATE" "$NOTES" "$PRIORITY" "$LIST_NAME"
+osascript -e "$APPLESCRIPT" "$TITLE" "$START_DATE" "$CALENDAR_NAME"

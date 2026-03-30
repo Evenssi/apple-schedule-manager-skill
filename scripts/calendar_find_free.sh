@@ -1,11 +1,13 @@
 #!/bin/bash
 # calendar_find_free.sh - 查找指定日期的空闲时段
-# 用法: calendar_find_free.sh <date> [duration_minutes] [work_hours_only]
-# date 格式: YYYY-MM-DD
-# duration_minutes: 需要的空闲时长，默认 60
-# work_hours_only: true/false，是否只查找工作时间内的空闲段，默认 true
 
 set -euo pipefail
+
+# 系统检测
+if [[ "$OSTYPE" != "darwin"* ]]; then
+    echo "ERR|此功能仅支持 macOS 系统，当前系统不支持"
+    exit 1
+fi
 
 TARGET_DATE="${1:?用法: calendar_find_free.sh <date> [duration_minutes] [work_hours_only]}"
 DURATION="${2:-60}"
@@ -55,14 +57,33 @@ on run argv
         set seconds of dayEnd to 0
     end if
 
-    -- 收集当天所有事件
+    -- 设置前一天零点，用于捕获跨日事件
+    set prevDayStart to current date
+    set year of prevDayStart to y
+    set month of prevDayStart to m
+    set day of prevDayStart to d
+    set hours of prevDayStart to 0
+    set minutes of prevDayStart to 0
+    set seconds of prevDayStart to 0
+    set prevDayStart to prevDayStart - (24 * 60 * 60) -- 前一天零点
+
+    -- 收集与当天时间窗口有交集的所有事件（包括跨日事件）
     set busySlots to {}
     tell application "Calendar"
         repeat with cal in (every calendar)
-            set dayEvents to (every event of cal whose start date ≥ dayStart and start date < dayEnd)
-            repeat with evt in dayEvents
+            -- 查询：开始时间在前一天之后 且 开始时间在当天结束之前
+            set candidateEvents to (every event of cal whose start date ≥ prevDayStart and start date < dayEnd)
+            repeat with evt in candidateEvents
                 if allday event of evt is false then
-                    set end of busySlots to {startTime:start date of evt, endTime:end date of evt, eventName:summary of evt}
+                    set evtStart to start date of evt
+                    set evtEnd to end date of evt
+                    -- 只保留与 [dayStart, dayEnd] 有交集的事件
+                    if evtEnd > dayStart and evtStart < dayEnd then
+                        -- 裁剪到当天窗口
+                        if evtStart < dayStart then set evtStart to dayStart
+                        if evtEnd > dayEnd then set evtEnd to dayEnd
+                        set end of busySlots to {startTime:evtStart, endTime:evtEnd, eventName:summary of evt}
+                    end if
                 end if
             end repeat
         end repeat
@@ -80,35 +101,24 @@ on run argv
         end repeat
     end repeat
 
-    -- 查找空闲时段
-    set output to "📊 " & targetDateStr & " 日程安排:" & linefeed
-    set output to output & "━━━━━━━━━━━━━━━━━━" & linefeed
+    set output to ""
 
-    -- 显示已有事件
-    if n > 0 then
-        set output to output & "已有日程:" & linefeed
-        repeat with slot in busySlots
-            set output to output & "  🔴 " & my formatTime(startTime of slot) & " - " & my formatTime(endTime of slot) & " " & eventName of slot & linefeed
-        end repeat
-        set output to output & linefeed
-    else
-        set output to output & "  当天暂无日程安排" & linefeed & linefeed
-    end if
+    -- 输出已有事件 (BUSY 行)
+    repeat with slot in busySlots
+        set output to output & "BUSY|" & my formatTime(startTime of slot) & "|" & my formatTime(endTime of slot) & "|" & eventName of slot & linefeed
+    end repeat
 
     -- 查找空闲段
-    set output to output & "空闲时段 (≥" & durationMin & "分钟):" & linefeed
     set freeStart to dayStart
     set foundFree to false
 
     repeat with slot in busySlots
         set slotStart to startTime of slot
-        -- 计算空闲段
         set gapMinutes to ((slotStart - freeStart) / 60) as integer
         if gapMinutes ≥ durationMin then
-            set output to output & "  🟢 " & my formatTime(freeStart) & " - " & my formatTime(slotStart) & " (" & gapMinutes & "分钟)" & linefeed
+            set output to output & "FREE|" & my formatTime(freeStart) & "|" & my formatTime(slotStart) & "|" & gapMinutes & linefeed
             set foundFree to true
         end if
-        -- 更新搜索起点
         if endTime of slot > freeStart then
             set freeStart to endTime of slot
         end if
@@ -117,12 +127,12 @@ on run argv
     -- 检查最后一段
     set gapMinutes to ((dayEnd - freeStart) / 60) as integer
     if gapMinutes ≥ durationMin then
-        set output to output & "  🟢 " & my formatTime(freeStart) & " - " & my formatTime(dayEnd) & " (" & gapMinutes & "分钟)" & linefeed
+        set output to output & "FREE|" & my formatTime(freeStart) & "|" & my formatTime(dayEnd) & "|" & gapMinutes & linefeed
         set foundFree to true
     end if
 
     if not foundFree then
-        set output to output & "  ⚠️ 当天无足够空闲时段" & linefeed
+        set output to output & "NONE" & linefeed
     end if
 
     return output
