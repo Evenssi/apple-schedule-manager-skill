@@ -1,33 +1,20 @@
 # Apple Schedule Manager Skill 📅
 
-An AI-powered schedule management skill that extracts events from natural language and writes them to **Apple Calendar** & **Reminders** via AppleScript.
+AI 日程管理 Skill，将自然语言日程指令解析并写入 macOS 原生日历或提醒事项。
 
-> ⚠️ **macOS only** — relies on `osascript` and native macOS apps (Calendar.app, Reminders.app).
+> ⚠️ **仅支持 macOS** — 依赖 `osascript` 调用 Calendar.app 和 Reminders.app，不支持 Windows/Linux，不支持 Google Calendar、Outlook 等第三方日历。
 
-## Features
+## 功能概览
 
-- **Natural language parsing** — understands inputs like *"meeting with John tomorrow at 3pm for an hour"*
-- **Apple Calendar integration** — create, query, and manage calendar events
-- **Reminders integration** — create to-do items in Apple Reminders
-- **Conflict detection** — checks existing events before writing, suggests alternative time slots
-- **Smart scheduling** — finds free slots and recommends optimal times
-- **Recurring events** — supports daily / weekly / monthly / yearly recurrence
+- **自然语言解析** — 支持中文自然语言时间表达（"明天下午3点开会一小时"、"下周一上午十点"）
+- **日历事件管理** — 创建、查询、修改、删除日历事件
+- **批量写入** — 多条日程一次性批量写入日历
+- **提醒事项管理** — 创建、查看、完成、删除提醒事项
+- **冲突检测** — 写入前自动检查时间冲突，提供替代时段建议
+- **智能排程** — 分析空闲时段，根据事件类型推荐最优时间
+- **重复事件** — 支持 daily / weekly / monthly / yearly 重复规则
 
-## Project Structure
-
-```
-├── SKILL.md                  # Skill definition (triggers, workflows, prompts)
-└── scripts/
-    ├── calendar_read.sh      # Query events by date range
-    ├── calendar_write.sh     # Create calendar events
-    ├── calendar_find_free.sh # Find free time slots
-    ├── calendar_list.sh      # List available calendars
-    └── reminder_write.sh     # Create reminders
-```
-
-## Installation
-
-Clone the repo and make scripts executable:
+## 安装
 
 ```bash
 git clone https://github.com/Evenssi/apple-schedule-manager-skill.git
@@ -35,42 +22,13 @@ cd apple-schedule-manager-skill
 chmod +x scripts/*.sh
 ```
 
-## Usage
+安装后将此文件夹放入 AI agent 的 skill 目录，agent 会自动读取 `SKILL.md` 获取完整工作流程和脚本调用方式。
 
-### Scripts
+## 系统要求
 
-```bash
-# List all calendars
-./scripts/calendar_list.sh
-
-# Read events for a date range
-./scripts/calendar_read.sh "2026-03-28" "2026-03-29"
-
-# Find free slots (date, min_duration_minutes, work_hours_only)
-./scripts/calendar_find_free.sh "2026-03-28" 60 true
-
-# Create a calendar event
-./scripts/calendar_write.sh "Team Meeting" "2026-03-28T14:00:00" "2026-03-28T15:00:00" \
-  "Room A" "Weekly sync" "false" "15" "weekly" "Work"
-
-# Create a reminder
-./scripts/reminder_write.sh "Buy groceries" "2026-03-28T18:00:00" "For dinner" "0" ""
-```
-
-### As an AI Skill
-
-Place the folder in your AI agent's skill directory. The agent reads `SKILL.md` to understand the workflow:
-
-1. Extract structured event data from user input
-2. Show confirmation card to user
-3. Check for conflicts → suggest alternatives if needed
-4. Write to Calendar or Reminders upon confirmation
-
-## Requirements
-
-- **macOS** 10.15 (Catalina) or later
-- **Calendar.app** and **Reminders.app** (pre-installed)
-- Grant automation permission on first use: *System Settings > Privacy & Security > Automation*
+- **macOS** 10.15 (Catalina) 或更高版本
+- **Calendar.app** 和 **Reminders.app**（系统预装）
+- 首次使用需授权自动化权限：*系统设置 > 隐私与安全性 > 自动化*
 
 ## License
 
